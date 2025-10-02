@@ -449,12 +449,7 @@ import { useInferenceEngine } from '@/composables/useInferenceEngine'
 import type { TravelPreferences } from '@/types'
 
 // Composable - Motor de Inferencia
-const {
-  isLoading,
-  recommendations,
-  getRecommendations: ejecutarInferencia,
-  debugInfo,
-} = useInferenceEngine()
+const { isLoading, recommendations, ejecutarInferencia, debugInfo } = useInferenceEngine()
 const cargando = isLoading
 const recomendaciones = recommendations
 
@@ -493,12 +488,7 @@ const obtenerRecomendaciones = async () => {
   formularioEnviado.value = true
   mostrarDebug.value = false // Ocultar debug al hacer nueva consulta
 
-  try {
-    await ejecutarInferencia(preferencias.value)
-  } catch (error) {
-    console.error('Error al obtener recomendaciones:', error)
-    formularioEnviado.value = false
-  }
+  await ejecutarInferencia(preferencias.value)
 }
 </script>
 

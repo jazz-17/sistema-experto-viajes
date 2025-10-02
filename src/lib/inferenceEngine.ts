@@ -20,43 +20,43 @@ export enum ConflictResolutionStrategy {
 /**
  * Motor de Inferencia de Encadenamiento Hacia Adelante
  */
-export class ForwardChainingEngine {
-  private knowledgeBase: Rule[]
-  private factBase: Map<string, Fact>
-  private terminalConsequents: string[]
-  private strategy: ConflictResolutionStrategy
+export class MotorDeEncadenamientoProgresivo {
+  private baseDeConocimientos: Rule[]
+  private baseDeHechos: Map<string, Fact>
+  private consecuentesTerminales: string[]
+  private strategia: ConflictResolutionStrategy
   private executionTrace: string[]
 
   constructor(
-    rules: Rule[],
-    initialFacts: Fact[],
-    terminalConsequents: string[],
-    strategy: ConflictResolutionStrategy = ConflictResolutionStrategy.HIGHEST_PRIORITY,
+    baseDeConocimientos: Rule[],
+    baseDeHechos: Fact[],
+    consecuentesTerminales: string[],
+    strategia: ConflictResolutionStrategy = ConflictResolutionStrategy.HIGHEST_PRIORITY,
   ) {
-    this.knowledgeBase = rules
-    this.factBase = new Map()
-    this.terminalConsequents = terminalConsequents
-    this.strategy = strategy
+    this.baseDeConocimientos = baseDeConocimientos
+    this.baseDeHechos = new Map()
+    this.consecuentesTerminales = consecuentesTerminales
+    this.strategia = strategia
     this.executionTrace = []
 
     // Inicializar base de hechos
-    initialFacts.forEach((fact) => {
-      this.factBase.set(fact.id, fact)
+    baseDeHechos.forEach((fact) => {
+      this.baseDeHechos.set(fact.id, fact)
     })
   }
 
   /**
    * Algoritmo principal de inferencia - Encadenamiento Hacia Adelante
    */
-  public infer(): InferenceResult {
+  public inferir(): InferenceResult {
     let sw_di = true // Regla disparada
     const firedRules: Rule[] = []
     const derivedFacts: Fact[] = []
 
     this.executionTrace = []
     this.executionTrace.push('=== INICIO DEL MOTOR DE INFERENCIA ===')
-    this.executionTrace.push(`Hechos iniciales: ${Array.from(this.factBase.keys()).join(', ')}`)
-    this.executionTrace.push(`Consecuentes terminales: ${this.terminalConsequents.join(', ')}`)
+    this.executionTrace.push(`Hechos iniciales: ${Array.from(this.baseDeHechos.keys()).join(', ')}`)
+    this.executionTrace.push(`Consecuentes terminales: ${this.consecuentesTerminales.join(', ')}`)
 
     let iteration = 1
 
@@ -65,7 +65,7 @@ export class ForwardChainingEngine {
       this.executionTrace.push(`\n--- Iteración ${iteration} ---`)
 
       // Resolver conflictos y seleccionar regla a disparar
-      const result = this.resolveConflict()
+      const result = this.resolverConflicto()
       sw_di = result.sw_di
 
       if (sw_di && result.selectedRule) {
@@ -82,7 +82,7 @@ export class ForwardChainingEngine {
           confidence: rule.confidence,
         }
 
-        this.factBase.set(rule.consequent, newFact)
+        this.baseDeHechos.set(rule.consequent, newFact)
         derivedFacts.push(newFact)
 
         this.executionTrace.push(`🔥 Regla disparada: ${rule.name}`)
@@ -141,8 +141,8 @@ export class ForwardChainingEngine {
    * Resolver conflictos entre múltiples reglas disparables
    * Implementación de Resolver_conflicto(Rx, Cx, sw_di)
    */
-  private resolveConflict(): { selectedRule: Rule | null; sw_di: boolean } {
-    const fireableRules = this.getFireableRules()
+  private resolverConflicto(): { selectedRule: Rule | null; sw_di: boolean } {
+    const fireableRules = this.obtenerReglasActivables()
 
     if (fireableRules.length === 0) {
       return { selectedRule: null, sw_di: false }
@@ -152,7 +152,7 @@ export class ForwardChainingEngine {
 
     let selectedRule: Rule
 
-    switch (this.strategy) {
+    switch (this.strategia) {
       case ConflictResolutionStrategy.FIRST_RULE:
         selectedRule = fireableRules[0]
         this.executionTrace.push(`Estrategia: Primera regla -> ${selectedRule.name}`)
@@ -197,21 +197,21 @@ export class ForwardChainingEngine {
   /**
    * Obtener todas las reglas que se pueden disparar (todos los antecedentes están satisfechos)
    */
-  private getFireableRules(): Rule[] {
-    return this.knowledgeBase.filter((rule) => {
+  private obtenerReglasActivables(): Rule[] {
+    return this.baseDeConocimientos.filter((rule) => {
       // Saltar reglas ya ejecutadas para prevenir bucles infinitos (principio de refracción)
       if (rule.executed) {
         return false
       }
 
       // Verificar si el hecho consecuente ya existe para prevenir derivación redundante
-      if (this.factBase.has(rule.consequent)) {
+      if (this.baseDeHechos.has(rule.consequent)) {
         return false
       }
 
       // Verificar si todos los antecedentes están en la base de hechos
       return rule.antecedents.every((antecedent) => {
-        const fact = this.factBase.get(antecedent)
+        const fact = this.baseDeHechos.get(antecedent)
         return fact && this.isFactTrue(fact)
       })
     })
@@ -225,16 +225,6 @@ export class ForwardChainingEngine {
     // La lógica real se maneja en el bucle principal de inferencia
     this.executionTrace.push(`   Antecedentes satisfechos: ${rule.antecedents.join(', ')}`)
     this.executionTrace.push(`   Consecuente derivado: ${rule.consequent}`)
-  }
-
-  /**
-   * Verificar si algún consecuente terminal ha sido derivado
-   */
-  private checkTerminalConsequents(): boolean {
-    return this.terminalConsequents.some((consequent) => {
-      const fact = this.factBase.get(consequent)
-      return fact && this.isFactTrue(fact)
-    })
   }
 
   /**
@@ -260,7 +250,7 @@ export class ForwardChainingEngine {
     const recommendations: TravelRecommendation[] = []
 
     // Buscar hechos de recomendación de destinos
-    this.factBase.forEach((fact, factId) => {
+    this.baseDeHechos.forEach((fact, factId) => {
       if (factId.startsWith('destino_recomendado_') && this.isFactTrue(fact)) {
         const destinationId = factId.replace('destino_recomendado_', '')
         const confidence = fact.confidence || 0.5
@@ -287,7 +277,7 @@ export class ForwardChainingEngine {
   private findRecommendationReasons(destinationId: string): string[] {
     const reasons: string[] = []
 
-    this.knowledgeBase.forEach((rule) => {
+    this.baseDeConocimientos.forEach((rule) => {
       if (rule.consequent === `destino_recomendado_${destinationId}` && rule.executed) {
         reasons.push(rule.description || `Regla ${rule.name} aplicada`)
       }
@@ -300,14 +290,14 @@ export class ForwardChainingEngine {
    * Agregar un nuevo hecho a la base de hechos
    */
   public addFact(fact: Fact): void {
-    this.factBase.set(fact.id, fact)
+    this.baseDeHechos.set(fact.id, fact)
   }
 
   /**
    * Obtener la base de hechos actual
    */
   public getFactBase(): Map<string, Fact> {
-    return new Map(this.factBase)
+    return new Map(this.baseDeHechos)
   }
 
   /**
@@ -321,17 +311,17 @@ export class ForwardChainingEngine {
    * Resetear el motor de inferencia
    */
   public reset(initialFacts: Fact[]): void {
-    this.factBase.clear()
+    this.baseDeHechos.clear()
     this.executionTrace = []
 
     // Resetear el estado de ejecución de las reglas
-    this.knowledgeBase.forEach((rule) => {
+    this.baseDeConocimientos.forEach((rule) => {
       rule.executed = false
     })
 
     // Re-inicializar la base de hechos
     initialFacts.forEach((fact) => {
-      this.factBase.set(fact.id, fact)
+      this.baseDeHechos.set(fact.id, fact)
     })
   }
 }

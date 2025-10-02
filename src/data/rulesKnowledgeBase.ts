@@ -20,7 +20,7 @@ export interface DestinationInfo {
 }
 
 // Essential destinations only
-export const destinationInfo: Record<string, DestinationInfo> = {
+export const DESTINATION_INFO: Record<string, DestinationInfo> = {
   'cusco-machu-picchu': {
     id: 'cusco-machu-picchu',
     name: 'Cusco y Machu Picchu',
@@ -124,8 +124,7 @@ export const destinationInfo: Record<string, DestinationInfo> = {
   },
 }
 
-// Streamlined rules - Focus on activity + key modifiers
-export const travelRules: Rule[] = [
+export const BASE_DE_CONOCIMIENTOS: Rule[] = [
   // === CULTURA E HISTORIA ===
   {
     id: 'cultura_cusco_premium',
@@ -487,6 +486,16 @@ export const travelRules: Rule[] = [
     executed: false,
     description: 'Arequipa tiene el Cañón del Colca y naturaleza andina',
   },
+]
+
+// Definir consecuentes terminales (recomendaciones de destinos) - simplificado
+export const CONSECUENTES_TERMINALES = [
+  'destino_recomendado_cusco-machu-picchu',
+  'destino_recomendado_lima',
+  'destino_recomendado_iquitos-amazonas',
+  'destino_recomendado_mancora',
+  'destino_recomendado_arequipa-colca',
+  'destino_recomendado_ica-huacachina-paracas',
 ]
 
 // Additional facts for the inference engine

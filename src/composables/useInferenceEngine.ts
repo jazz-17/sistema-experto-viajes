@@ -1,6 +1,10 @@
 import { ref, computed } from 'vue'
-import { ForwardChainingEngine, ConflictResolutionStrategy } from '../lib/inferenceEngine'
-import { travelRules, destinationInfo } from '../data/rulesKnowledgeBase'
+import { MotorDeEncadenamientoProgresivo, ConflictResolutionStrategy } from '../lib/inferenceEngine'
+import {
+  BASE_DE_CONOCIMIENTOS,
+  DESTINATION_INFO,
+  CONSECUENTES_TERMINALES,
+} from '../data/rulesKnowledgeBase'
 import type { ExtendedRecommendation, TravelPreferences, Fact } from '@/types'
 
 // Función para crear hechos a partir de las preferencias del usuario
@@ -57,13 +61,7 @@ export function useInferenceEngine() {
   const firedRules = ref<string[]>([])
   const debugInfo = ref<any>(null) // Agregado para panel de debug
 
-  const getRecommendations = async (preferences: TravelPreferences) => {
-    // Prevenir múltiples llamadas concurrentes
-    if (isLoading.value) {
-      console.warn('⚠️ Inferencia ya en proceso, ignorando nueva solicitud')
-      return
-    }
-
+  const ejecutarInferencia = async (preferences: TravelPreferences) => {
     isLoading.value = true
 
     try {
@@ -74,65 +72,22 @@ export function useInferenceEngine() {
       firedRules.value = []
 
       // Convertir preferencias a hechos
-      const facts = createFactsFromPreferences(preferences)
+      const BASE_DE_HECHOS = createFactsFromPreferences(preferences)
 
       // CRUCIAL: Resetear estado de ejecución de todas las reglas antes de crear el motor
-      travelRules.forEach((rule) => {
-        rule.executed = false
+      BASE_DE_CONOCIMIENTOS.forEach((regla) => {
+        regla.executed = false
       })
 
-      // Debug: Verificar que las reglas se resetearon correctamente
-      const executedRulesCount = travelRules.filter((rule) => rule.executed).length
-      console.log(
-        `🔄 DEBUG: Reglas reseteadas. Reglas marcadas como ejecutadas: ${executedRulesCount}/${travelRules.length}`,
-      )
-
-      // Definir consecuentes terminales (recomendaciones de destinos) - simplificado
-      const terminalConsequents = [
-        'destino_recomendado_cusco-machu-picchu',
-        'destino_recomendado_lima',
-        'destino_recomendado_iquitos-amazonas',
-        'destino_recomendado_mancora',
-        'destino_recomendado_arequipa-colca',
-        'destino_recomendado_ica-huacachina-paracas',
-      ]
-
       // Crear instancia del motor de inferencia - De vuelta a HIGHEST_PRIORITY pero con más reglas
-      const engine = new ForwardChainingEngine(
-        travelRules,
-        facts,
-        terminalConsequents,
+      const engine = new MotorDeEncadenamientoProgresivo(
+        BASE_DE_CONOCIMIENTOS,
+        BASE_DE_HECHOS,
+        CONSECUENTES_TERMINALES,
         ConflictResolutionStrategy.HIGHEST_PRIORITY, // De vuelta a la estrategia original
       )
 
-      // Ejecutar inferencia con timeout de seguridad
-      const inferencePromise = new Promise((resolve, reject) => {
-        try {
-          const result = engine.infer()
-          resolve(result)
-        } catch (error) {
-          reject(error)
-        }
-      })
-
-      // Timeout de 10 segundos para evitar cuelgues
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Timeout: La inferencia tomó demasiado tiempo (>10s)'))
-        }, 10000)
-      })
-
-      const result = (await Promise.race([inferencePromise, timeoutPromise])) as any
-
-      // Debug logging
-      console.log('🔍 DEBUG: Facts created from preferences:', facts)
-      console.log('� DEBUG: Total rules in knowledge base:', travelRules.length)
-      console.log(
-        '�🔥 DEBUG: Fired rules:',
-        result.firedRules.map((r: any) => r.name),
-      )
-      console.log('📊 DEBUG: Final recommendations:', result.finalRecommendations)
-      console.log('🔍 DEBUG: Execution trace:', result.executionTrace)
+      const result = engine.inferir()
 
       // Store execution trace and fired rules for debugging
       executionTrace.value = result.executionTrace
@@ -140,18 +95,18 @@ export function useInferenceEngine() {
 
       // Store complete debug information
       debugInfo.value = {
-        inputFacts: facts,
+        inputFacts: BASE_DE_HECHOS,
         firedRules: result.firedRules,
         derivedFacts: result.derivedFacts,
         executionTrace: result.executionTrace,
         finalRecommendations: result.finalRecommendations,
-        totalRulesInKB: travelRules.length,
+        totalRulesInKB: BASE_DE_CONOCIMIENTOS.length,
         timestamp: new Date().toLocaleString(),
       }
 
       // Create extended recommendations with full destination info
       const extendedRecommendations = result.finalRecommendations.map((rec: any) => {
-        const destination = destinationInfo[rec.destinationId]
+        const destination = DESTINATION_INFO[rec.destinationId]
         return {
           ...rec,
           destination: destination || {
@@ -191,6 +146,6 @@ export function useInferenceEngine() {
     debugInfo, // Added for debug panel
 
     // Methods
-    getRecommendations,
+    ejecutarInferencia,
   }
 }
